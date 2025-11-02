@@ -41,4 +41,32 @@ export const InventoryItem = mongoose.model('InventoryItem', inventoryItemSchema
 export const Location = mongoose.model('Location', locationSchema);
 export const Transaction = mongoose.model('Transaction', transactionSchema);
 
+// 4. Donation Schema (For Volunteers)
+const donationSchema = new mongoose.Schema({
+    volunteerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    itemName: { type: String, required: true },
+    category: { type: String, required: true, enum: ['Medical', 'Food', 'Shelter', 'Equipment', 'Water'] },
+    quantity: { type: Number, required: true, min: 1 },
+    location: { type: String, required: true },
+    status: { type: String, default: 'pending', enum: ['pending', 'approved', 'rejected', 'received'] },
+    approvedBy: { type: String, default: null },
+    timestamp: { type: Date, default: Date.now },
+  }, { timestamps: true });
+  
+  // 5. Request Schema (For Refugees/Recipients)
+  const requestSchema = new mongoose.Schema({
+    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    itemName: { type: String, required: true },
+    category: { type: String, required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    location: { type: String, required: true },
+    status: { type: String, default: 'pending', enum: ['pending', 'approved', 'rejected', 'delivered'] },
+    priority: { type: String, default: 'normal', enum: ['low', 'normal', 'high'] },
+    timestamp: { type: Date, default: Date.now },
+  }, { timestamps: true });
+  
+  export const Donation = mongoose.model('Donation', donationSchema);
+  export const Request = mongoose.model('Request', requestSchema);
+  
+
 // The MOCK_DATA export has been removed to enforce the use of external JSON files.

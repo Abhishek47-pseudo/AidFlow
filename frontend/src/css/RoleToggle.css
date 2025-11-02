@@ -1,0 +1,59 @@
+/* ---------------------- General Styles ---------------------- */
+.role-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 6rem; /* accounts for header */
+    padding: 0.75rem 1rem;
+    border-radius: 9999px;
+    background: var(--card-bg);
+    box-shadow: 0 4px 10px var(--shadow-color);
+    width: fit-content;
+    margin-inline: auto;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Role Button */
+  .role-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+  }
+  
+  .role-btn:hover {
+    color: var(--accent);
+    transform: translateY(-2px);
+  }
+  
+  /* Active Role */
+  .role-btn.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  
+  /* ---------------------- Dark Mode ---------------------- */
+  :root {
+    --card-bg: #1a1a1a;
+    --text-secondary: #ccc;
+    --accent: #4f9eff;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+  }
+  
+  /* ---------------------- Light Mode ---------------------- */
+  [data-theme="light"] {
+    --card-bg: #f9f9f9;
+    --text-secondary: #555;
+    --accent: #0077ff;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+  }
+  

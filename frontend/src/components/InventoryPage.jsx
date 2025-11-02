@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, Edit, Package, Loader, XCircle, Send, Inbox } from 'lucide-react';
 import '../css/InventoryPage.css';
+import RoleToggle from "../components/RoleToggle";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = 'http://localhost:5000/api/inventory/items';
 
@@ -31,6 +33,14 @@ const InventoryPage = () => {
   const [message, setMessage] = useState('');
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [transactionItem, setTransactionItem] = useState(null);
+
+  const navigate = useNavigate();
+
+  // ✅ Role Toggle handler
+  const handleRoleChange = (role) => {
+    if (role === "volunteer") navigate("/volunteer");
+    else if (role === "refugee") navigate("/refugee");
+  };
 
   const fetchItems = async () => {
     setIsLoading(true);
@@ -177,6 +187,10 @@ const InventoryPage = () => {
 
   return (
     <div className="inventory-page">
+
+      {/* ✅ Role Toggle added at top */}
+      <RoleToggle currentRole="admin" onRoleChange={handleRoleChange} />
+
       <h1>Supply Chain Dashboard Overview</h1>
       <p className="subtitle">Centralized management for all disaster relief inventory.</p>
 

@@ -1,0 +1,59 @@
+DisasterReliefAI/
+│
+├── frontend/                      # React Frontend (MERN - React side)
+│   ├── src/
+│   │   ├── components/            # Reusable UI Components
+│   │   ├── pages/                 # Main Pages (Dashboard, Reports, Agents)
+│   │   ├── services/              # Axios API calls to backend
+│   │   ├── context/               # Global React Contexts (User, Alerts, etc.)
+│   │   ├── utils/                 # Helpers, formatters, constants
+│   │   └── App.js
+│   │
+│   ├── public/
+│   │   └── index.html
+│   │
+│   ├── .env
+│   └── package.json
+│
+├── backend/                       # Node.js + Express Backend (MERN - API side)
+│   ├── src/
+│   │   ├── routes/                # REST API endpoints
+│   │   ├── controllers/           # Business logic for routes
+│   │   ├── models/                # MongoDB Schemas (User, Inventory, Disaster)
+│   │   ├── services/              # External API integrations (Twilio, Weather, Agent)
+│   │   ├── middlewares/           # Authentication, Validation, Error handling
+│   │   ├── utils/                 # Reusable utilities
+│   │   └── index.js               # App entry point
+│   │
+│   ├── .env
+│   └── package.json
+│
+├── agents/                        # Agentic AI Layer (Python)
+│   ├── agents/                    # Individual AI Agent definitions
+│   │   ├── watcher_agent.py       # Monitors disasters, triggers alerts
+│   │   ├── planner_agent.py       # Plans resource allocation
+│   │   ├── volunteer_agent.py     # Coordinates volunteer assignments
+│   │   └── reporter_agent.py      # Generates daily or emergency reports
+│   │
+│   ├── core/                      # Shared logic / base classes
+│   │   ├── llm_manager.py         # Manages AI model calls (OpenAI, local models)
+│   │   ├── api_clients.py         # External API clients (Weather, Maps, etc.)
+│   │   ├── memory_store.py        # (Optional) Agent memory / context storage
+│   │   └── agent_utils.py         # Utility functions (parsing, retries, etc.)
+│   │
+│   ├── data/                      # Logs / temporary datasets / cache
+│   │   ├── alerts.json
+│   │   └── reports/
+│   │
+│   ├── server.py                  # FastAPI backend for agent processing
+│   ├── requirements.txt
+│   └── README.md
+│
+├── docs/                          # Documentation and system overview
+│   ├── architecture.md
+│   ├── api_reference.md
+│   └── setup_guide.md
+│
+├── .gitignore
+├── docker-compose.yml             # Optional: Combine backend + agents + MongoDB
+└── README.md

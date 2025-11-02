@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
+import { Donation, Request } from './models/Inventory.js';
 
 // --- MODEL & UTILITY IMPORTS ---
 import User, { SEED_USERS } from './models/User.js';
@@ -194,6 +195,100 @@ app.get("/api/inventory/items", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch inventory items." });
   }
 });
+// Volunteer donates an item
+app.post("/api/volunteer/donate", async (req, res) => {
+    try {
+      const { volunteerId, itemName, category, quantity, location } = req.body;
+      const donation = await Donation.create({ volunteerId, itemName, category, quantity, location });
+      res.status(201).json({ message: "Donation submitted!", donation });
+    } catch (err) {
+      console.error("❌ Donation Error:", err.message);
+      res.status(500).json({ error: "Failed to submit donation." });
+    }
+  });
+  
+  // Fetch all donations for this volunteer
+  app.get("/api/volunteer/donations/:volunteerId", async (req, res) => {
+    try {
+      const { volunteerId } = req.params;
+      const donations = await Donation.find({ volunteerId }).sort({ createdAt: -1 });
+      res.json(donations);
+    } catch (err) {
+      console.error("❌ Error fetching donations:", err.message);
+      res.status(500).json({ error: "Failed to fetch donations." });
+    }
+  });
+  // Request items
+app.post("/api/requester/request", async (req, res) => {
+    try {
+      const { requesterId, itemName, category, quantity, location, priority } = req.body;
+      const request = await Request.create({ requesterId, itemName, category, quantity, location, priority });
+      res.status(201).json({ message: "Request submitted!", request });
+    } catch (err) {
+      console.error("❌ Request Error:", err.message);
+      res.status(500).json({ error: "Failed to submit request." });
+    }
+  });
+  
+  // Fetch all requests for this user
+  app.get("/api/requester/requests/:requesterId", async (req, res) => {
+    try {
+      const { requesterId } = req.params;
+      const requests = await Request.find({ requesterId }).sort({ createdAt: -1 });
+      res.json(requests);
+    } catch (err) {
+      console.error("❌ Error fetching requests:", err.message);
+      res.status(500).json({ error: "Failed to fetch requests." });
+    }
+  });
+// Approve or reject a donation
+app.put("/api/admin/donation/:id", async (req, res) => {
+    try {
+      const { status, approvedBy } = req.body;
+      const donation = await Donation.findByIdAndUpdate(
+        req.params.id,
+        { status, approvedBy },
+        { new: true }
+      );
+  
+      // If approved, update inventory count
+      if (status === "approved") {
+        const existingItem = await InventoryItem.findOne({ name: donation.itemName });
+        if (existingItem) {
+          existingItem.currentStock += donation.quantity;
+          existingItem.save();
+        }
+      }
+  
+      res.json({ message: "Donation status updated.", donation });
+    } catch (err) {
+      console.error("❌ Admin Donation Update Error:", err.message);
+      res.status(500).json({ error: "Failed to update donation status." });
+    }
+  });
+  
+  // Approve or reject a request
+  app.put("/api/admin/request/:id", async (req, res) => {
+    try {
+      const { status } = req.body;
+      const request = await Request.findByIdAndUpdate(req.params.id, { status }, { new: true });
+  
+      // If approved/delivered, deduct from inventory
+      if (status === "delivered" || status === "approved") {
+        const item = await InventoryItem.findOne({ name: request.itemName });
+        if (item && item.currentStock >= request.quantity) {
+          item.currentStock -= request.quantity;
+          item.save();
+        }
+      }
+  
+      res.json({ message: "Request status updated.", request });
+    } catch (err) {
+      console.error("❌ Admin Request Update Error:", err.message);
+      res.status(500).json({ error: "Failed to update request status." });
+    }
+  });
+    
 
 // **********************************************
 // ********* DISASTER PREDICTIONS API ***********
@@ -255,9 +350,9 @@ app.get("/api/disaster-predictions", async (req, res) => {
 // ************* SERVE FRONTEND *****************
 // **********************************************
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../client/build")));
+  app.use(express.static(path.join(__dirname, "../frontend/build")));
   app.get("*", (req, res) =>
-    res.sendFile(path.resolve(__dirname, "../client", "build", "index.html"))
+    res.sendFile(path.resolve(__dirname, "../frontend", "build", "index.html"))
   );
 } else {
   app.get("/", (req, res) => {

@@ -128,7 +128,7 @@ class DispatchService {
         try {
             // Get all available locations
             const locations = await Location.find({});
-            
+
             if (!locations || locations.length === 0) {
                 return {
                     success: false,
@@ -162,25 +162,25 @@ class DispatchService {
 
             for (const resource of requiredResources) {
                 let remainingQuantity = resource.quantity || 1;
-                
+
                 for (const center of centersWithDistance) {
                     if (remainingQuantity <= 0) break;
 
                     // Find matching inventory items
                     const category = this.mapResourceToCategory(resource.name);
                     const availableItems = await InventoryItem.find({
-                        location: center.centerName,
+                        location: center.centerId,
                         category: category,
                         currentStock: { $gt: 0 }
-                    });
-                    
+                    }).populate('location');
+
                     console.log(`🔍 Looking for ${category} at ${center.centerName}: found ${availableItems.length} items`);
 
                     for (const item of availableItems) {
                         if (remainingQuantity <= 0) break;
 
                         const allocateQty = Math.min(remainingQuantity, item.currentStock);
-                        
+
                         // Add to center allocation
                         let centerAlloc = allocation.centers.find(c => c.centerId === center.centerId);
                         if (!centerAlloc) {
@@ -200,7 +200,7 @@ class DispatchService {
                             category: item.category,
                             quantity: allocateQty,
                             unit: item.unit,
-                            locationName: item.location?.name || 'Unknown Location'
+                            locationName: item.location?.name || center.centerName || 'Unknown Location'
                         });
 
                         remainingQuantity -= allocateQty;
@@ -234,7 +234,7 @@ class DispatchService {
                 centers: allocation.centers,
                 totalAllocated: allocation.totalAllocated,
                 unmetNeeds: allocation.unmetNeeds,
-                message: allocation.unmetNeeds.length > 0 
+                message: allocation.unmetNeeds.length > 0
                     ? 'Partial allocation - some resources unavailable'
                     : 'All resources allocated successfully'
             };
@@ -303,7 +303,7 @@ class DispatchService {
                     const item = await InventoryItem.findById(resource.itemId).session(session);
                     if (item) {
                         item.currentStock -= resource.quantity;
-                        
+
                         // Update status based on thresholds
                         if (item.currentStock <= 0) {
                             item.status = 'critical';
@@ -368,10 +368,10 @@ class DispatchService {
         const R = 6371; // Earth's radius in km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
 

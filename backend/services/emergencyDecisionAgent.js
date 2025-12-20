@@ -252,12 +252,12 @@ EMERGENCY DETAILS:
 - User Message: "${emergencyData.userMessage}"
 - Disaster Type: ${bertAnalysis.disaster.type} (Confidence: ${Math.round(bertAnalysis.disaster.confidence * 100)}%)
 - Severity: ${bertAnalysis.severity}
-- Urgency: ${bertAnalysis.sentiment.urgency}
+- Urgency: ${bertAnalysis.sentiment?.urgency || 'unknown'}
 
 BERT ANALYSIS:
-- Sentiment Score: ${bertAnalysis.sentiment.score}
-- Keywords: ${bertAnalysis.sentiment.keywords.join(", ")}
-- Emotion Detected: ${bertAnalysis.sentiment.emotion}
+- Sentiment Score: ${bertAnalysis.sentiment?.score || 0}
+- Keywords: ${(bertAnalysis.sentiment?.keywords || []).join(", ")}
+- Emotion Detected: ${bertAnalysis.sentiment?.emotion || 'neutral'}
 
 INVENTORY ANALYSIS:
 - Total Available Items: ${inventoryAnalysis.totalItems}

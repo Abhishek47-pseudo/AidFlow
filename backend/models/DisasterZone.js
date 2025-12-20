@@ -52,8 +52,8 @@ const disasterZoneSchema = new mongoose.Schema({
     },
     accessibilityStatus: {
         roadAccess: { type: String, enum: ['open', 'restricted', 'blocked', 'unknown'], default: 'unknown' },
-        airAccess: { type: String, enum: ['available', 'limited', 'unavailable'], default: 'available' },
-        waterAccess: { type: String, enum: ['available', 'limited', 'unavailable'], default: 'unknown' },
+        airAccess: { type: String, enum: ['available', 'limited', 'unavailable', 'unknown'], default: 'unknown' },
+        waterAccess: { type: String, enum: ['available', 'limited', 'unavailable', 'unknown'], default: 'unknown' },
         hazards: [String]
     },
     detectedBy: {

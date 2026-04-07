@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,10 +22,18 @@ class ImageDisasterDetectionAgent {
         // EfficientNet B3 model endpoint (if you have it deployed)
         this.efficientNetEndpoint = process.env.EFFICIENTNET_API_URL || null;
 
+        // Python inference script path
+        this.pythonScriptPath = path.join(__dirname, 'python', 'predict_disaster.py');
+
+        // Determine Python executable path (Prioritize local .venv)
+        const venvPythonKey = process.platform === 'win32' ? 'Scripts' : 'bin';
+        const venvPython = path.join(__dirname, '..', '..', '.venv', venvPythonKey, 'python' + (process.platform === 'win32' ? '.exe' : ''));
+        this.pythonExecutable = fs.existsSync(venvPython) ? venvPython : 'python';
+
         // Disaster labels from your trained model
         this.disasterLabels = {
             0: 'fire',
-            1: 'flood', 
+            1: 'flood',
             2: 'earthquake_damage',
             3: 'landslide',
             4: 'storm_damage',
@@ -47,7 +56,7 @@ class ImageDisasterDetectionAgent {
      */
     async detectDisasterFromImage(imageData, location) {
         console.log('🖼️ Agent 2: Starting image-based disaster detection...');
-        
+
         const detection = {
             agentId: 'agent_2_image_detection',
             timestamp: new Date().toISOString(),
@@ -91,7 +100,7 @@ class ImageDisasterDetectionAgent {
      */
     async runEfficientNetPrediction(imageData) {
         try {
-            // If you have the model deployed as an API
+            // 1. Try Remote API
             if (this.efficientNetEndpoint) {
                 const response = await fetch(this.efficientNetEndpoint, {
                     method: 'POST',
@@ -105,7 +114,21 @@ class ImageDisasterDetectionAgent {
                 }
             }
 
-            // Fallback: Simulate EfficientNet B3 predictions
+            // 2. Try Local Python Script
+            if (fs.existsSync(this.pythonScriptPath)) {
+                try {
+                    const result = await this.runPythonInference(imageData);
+                    if (result && !result.error) {
+                        return this.processPythonOutput(result);
+                    } else {
+                        console.warn('⚠️ Python inference returned error:', result?.error);
+                    }
+                } catch (pyError) {
+                    console.warn('⚠️ Python inference failed (check torch/torchvision installation):', pyError.message);
+                }
+            }
+
+            // 3. Fallback: Simulate EfficientNet B3 predictions
             return this.simulateEfficientNetPrediction(imageData);
 
         } catch (error) {
@@ -115,16 +138,69 @@ class ImageDisasterDetectionAgent {
     }
 
     /**
+     * Execute Python script for inference
+     */
+    runPythonInference(imageData) {
+        return new Promise((resolve, reject) => {
+            const pythonProcess = spawn(this.pythonExecutable, [this.pythonScriptPath]);
+
+            let output = '';
+            let errorOutput = '';
+
+            // Send image data to stdin
+            pythonProcess.stdin.write(JSON.stringify({ image: imageData }));
+            pythonProcess.stdin.end();
+
+            pythonProcess.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            pythonProcess.stderr.on('data', (data) => {
+                errorOutput += data.toString();
+            });
+
+            pythonProcess.on('close', (code) => {
+                if (code !== 0) {
+                    reject(new Error(`Python script exited with code ${code}: ${errorOutput}`));
+                    return;
+                }
+
+                try {
+                    const result = JSON.parse(output);
+                    resolve(result);
+                } catch (e) {
+                    reject(new Error('Failed to parse Python output'));
+                }
+            });
+        });
+    }
+
+    /**
+     * Process Output from Python Script
+     */
+    processPythonOutput(result) {
+        // Map Python result format to internal format if needed
+        return {
+            source: 'efficientnet_b3_local',
+            primaryDisaster: result.primary_disaster,
+            topPredictions: result.top_predictions,
+            rawPredictions: result.predictions,
+            confidence: result.primary_disaster.probability,
+            severity: this.calculateSeverityFromProbability(result.primary_disaster.probability)
+        };
+    }
+
+    /**
      * Process EfficientNet B3 model output
      */
     processModelOutput(modelResult) {
         // Expected format: { predictions: [[prob1, prob2, ...]], class: 0 }
         const predictions = modelResult.predictions[0] || [];
         const predictedClass = modelResult.class || 0;
-        
+
         // Get top 3 predictions
         const sortedPredictions = predictions
-            .map((prob, idx) => ({ 
+            .map((prob, idx) => ({
                 label: this.disasterLabels[idx] || 'unknown',
                 probability: prob,
                 class: idx
@@ -144,22 +220,36 @@ class ImageDisasterDetectionAgent {
 
     /**
      * Simulate EfficientNet B3 predictions (for demo/testing)
+     * Uses a hash of the image data to produce deterministic results
      */
     simulateEfficientNetPrediction(imageData) {
-        // Simulate realistic predictions based on image metadata
+        // Simple hash function to make simulation deterministic
+        let hash = 0;
+        const str = imageData.toString().substring(0, 100); // Use first 100 chars
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0; // Convert to 32bit integer
+        }
+
+        // Use hash to select a primary disaster index
         const disasterTypes = Object.values(this.disasterLabels);
-        const predictions = disasterTypes.map(() => Math.random());
-        
+        const primaryIndex = Math.abs(hash) % (disasterTypes.length - 1); // Exclude 'normal' slightly less often? Or just mod length.
+
+        // Generate probabilities with the hashed index getting the highest score
+        const predictions = disasterTypes.map((_, idx) => {
+            if (idx === primaryIndex) return 0.7 + (Math.abs(hash % 20) / 100); // 0.70 - 0.90
+            return (Math.abs(hash >> (idx)) % 30) / 100; // 0.00 - 0.30
+        });
+
         // Normalize to sum to 1
         const sum = predictions.reduce((a, b) => a + b, 0);
         const normalized = predictions.map(p => p / sum);
 
         // Get top prediction
-        const maxIdx = normalized.indexOf(Math.max(...normalized));
         const topPredictions = normalized
             .map((prob, idx) => ({
                 label: this.disasterLabels[idx],
-                probability: prob,
+                probability: Number(prob.toFixed(4)),
                 class: idx
             }))
             .sort((a, b) => b.probability - a.probability)
@@ -210,9 +300,9 @@ class ImageDisasterDetectionAgent {
         try {
             const { lat, lon } = location;
             const radius = 0.1; // 10km radius
-            
-            const url = `${this.nasaAPIs.modis}/${this.nasaAPIs.firms}/VIIRS_SNPP_NRT/${lat-radius},${lon-radius},${lat+radius},${lon+radius}/1`;
-            
+
+            const url = `${this.nasaAPIs.modis}/${this.nasaAPIs.firms}/VIIRS_SNPP_NRT/${lat - radius},${lon - radius},${lat + radius},${lon + radius}/1`;
+
             const response = await fetch(url);
             if (response.ok) {
                 const csvText = await response.text();
@@ -272,10 +362,10 @@ class ImageDisasterDetectionAgent {
         }
 
         if (nasaData.events.length > 0) {
-            const relevantEvents = nasaData.events.filter(event => 
+            const relevantEvents = nasaData.events.filter(event =>
                 this.isEventRelevant(event, modelPrediction.primaryDisaster.label)
             );
-            
+
             if (relevantEvents.length > 0) {
                 combined.confidence += 0.10;
                 combined.corroboration.push(`NASA EONET detected ${relevantEvents.length} related events`);
@@ -305,7 +395,7 @@ class ImageDisasterDetectionAgent {
      */
     calculateConfidence(detection) {
         let confidence = detection.modelPrediction.confidence * 0.7; // Model weight: 70%
-        
+
         // NASA data weight: 30%
         if (detection.nasaData.fires.length > 0) confidence += 0.15;
         if (detection.nasaData.events.length > 0) confidence += 0.15;
@@ -348,13 +438,13 @@ class ImageDisasterDetectionAgent {
         const maxDistance = 100; // km
         return events.filter(event => {
             if (!event.geometry || event.geometry.length === 0) return false;
-            
+
             const eventCoords = event.geometry[0].coordinates;
             const distance = this.calculateDistance(
                 location.lat, location.lon,
                 eventCoords[1], eventCoords[0]
             );
-            
+
             return distance <= maxDistance;
         });
     }
@@ -383,10 +473,10 @@ class ImageDisasterDetectionAgent {
         const R = 6371; // Earth's radius in km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
 
@@ -422,7 +512,7 @@ class ImageDisasterDetectionAgent {
      */
     extractLabels(detection) {
         const labels = [];
-        
+
         // Add primary disaster
         labels.push({
             type: 'disaster_type',

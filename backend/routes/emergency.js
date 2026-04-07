@@ -102,8 +102,8 @@ router.post('/request', async (req, res) => {
                 reasoning: decisionResult.reasoning,
                 dispatchPlan: decisionResult.dispatchPlan
             },
-            message: decisionResult.dispatchExecuted 
-                ? '🚀 Emergency analyzed and resources automatically dispatched by AI!' 
+            message: decisionResult.dispatchExecuted
+                ? '🚀 Emergency analyzed and resources automatically dispatched by AI!'
                 : 'Emergency request processed successfully. Awaiting manual dispatch approval.'
         });
 
@@ -123,7 +123,7 @@ router.post('/request', async (req, res) => {
 router.get('/status/:emergencyId', async (req, res) => {
     try {
         const { emergencyId } = req.params;
-        
+
         const emergency = await Emergency.findOne({ emergencyId })
             // .populate('userId', 'firstName lastName') // Commented out since userId is now string
             .populate('assignedTeam', 'firstName lastName role');
@@ -159,9 +159,9 @@ router.get('/active', async (req, res) => {
         const activeEmergencies = await Emergency.find({
             status: { $in: ['received', 'analyzing', 'dispatched', 'en_route'] }
         })
-        // .populate('userId', 'firstName lastName') // Commented out since userId is now string
-        .populate('assignedTeam', 'firstName lastName role')
-        .sort({ 'aiAnalysis.severity': -1, createdAt: -1 });
+            // .populate('userId', 'firstName lastName') // Commented out since userId is now string
+            .populate('assignedTeam', 'firstName lastName role')
+            .sort({ 'aiAnalysis.severity': -1, createdAt: -1 });
 
         res.json({
             count: activeEmergencies.length,
@@ -232,17 +232,17 @@ router.get('/analytics', async (req, res) => {
             Emergency.aggregate([
                 { $group: { _id: '$status', count: { $sum: 1 } } }
             ]),
-            
+
             // Emergencies by disaster type
             Emergency.aggregate([
                 { $group: { _id: '$aiAnalysis.disaster.type', count: { $sum: 1 } } }
             ]),
-            
+
             // Emergencies by severity
             Emergency.aggregate([
                 { $group: { _id: '$aiAnalysis.severity', count: { $sum: 1 } } }
             ]),
-            
+
             // Recent emergencies (last 24 hours)
             Emergency.countDocuments({
                 createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
@@ -267,12 +267,12 @@ async function createDispatchRequest(emergencyId, analysis, resourcePlan) {
     try {
         const severity = analysis?.severity || 'medium';
         const requestedResources = [];
-        
+
         // Convert resource plan to structured format
         const immediate = resourcePlan?.immediate || [];
         const secondary = resourcePlan?.secondary || [];
         const allResources = [...immediate, ...secondary];
-        
+
         for (const resourceName of allResources) {
             const quantity = resourcePlan?.quantities?.[resourceName] || 1;
             requestedResources.push({
@@ -281,7 +281,7 @@ async function createDispatchRequest(emergencyId, analysis, resourcePlan) {
                 category: mapResourceToCategory(resourceName)
             });
         }
-        
+
         const dispatchRequest = new DispatchRequest({
             emergencyId: emergencyId,
             severity: severity,
@@ -291,13 +291,13 @@ async function createDispatchRequest(emergencyId, analysis, resourcePlan) {
             reasoning: `${severity} severity emergency requires manual approval for dispatch`,
             notes: `AI analysis confidence: ${analysis?.disaster?.confidence || 'unknown'}`
         });
-        
+
         await dispatchRequest.save();
         console.log(`📋 Dispatch request created for emergency ${emergencyId}`);
-        
+
         // Reserve resources temporarily
         await reserveResources(resourcePlan);
-        
+
     } catch (error) {
         console.error('❌ Failed to create dispatch request:', error.message);
     }
@@ -307,12 +307,12 @@ async function createDispatchRequest(emergencyId, analysis, resourcePlan) {
 function mapResourceToCategory(resourceName) {
     const categoryMap = {
         'medical': 'Medical',
-        'food': 'Food', 
+        'food': 'Food',
         'water': 'Water',
         'shelter': 'Shelter',
         'equipment': 'Equipment'
     };
-    
+
     const lowerName = resourceName.toLowerCase();
     for (const [key, category] of Object.entries(categoryMap)) {
         if (lowerName.includes(key)) {
@@ -326,21 +326,21 @@ function mapResourceToCategory(resourceName) {
 async function reserveResources(resourcePlan) {
     try {
         const resourcesToReserve = [...resourcePlan.immediate, ...resourcePlan.secondary];
-        
+
         for (const resourceName of resourcesToReserve) {
             const quantity = resourcePlan.quantities[resourceName] || 1;
-            
+
             // Normalize resource name for better matching
             const normalizedResourceName = resourceName.replace(/_/g, ' ');
-            
-            const item = await InventoryItem.findOne({ 
+
+            const item = await InventoryItem.findOne({
                 $or: [
                     { name: { $regex: resourceName, $options: 'i' } },
                     { name: { $regex: normalizedResourceName, $options: 'i' } },
                     { name: { $regex: resourceName.replace(/_/g, ''), $options: 'i' } }
                 ]
             });
-            
+
             if (item && item.currentStock >= quantity) {
                 item.currentStock -= quantity;
                 await item.save();
@@ -355,8 +355,176 @@ async function reserveResources(resourcePlan) {
 }
 
 /**
+ * POST /api/emergency/request-with-image
+ * Submit an emergency request with an image (Agent 2 Analysis + Database Save)
+ */
+router.post('/request-with-image', async (req, res) => {
+    try {
+        const { imageData, location, userId, message } = req.body;
+
+        if (!imageData || !location) {
+            return res.status(400).json({
+                error: 'Missing required fields: imageData, location'
+            });
+        }
+
+        console.log(`🖼️ Processing image emergency request from user ${userId}`);
+
+        // 1. Analyze Image using Agent 2
+        const imageAgent = new (await import('../services/imageDisasterDetection.js')).default();
+        const detection = await imageAgent.detectDisasterFromImage(imageData, location);
+
+        // 2. Map detection to schema format
+        const disasterType = detection.combinedAnalysis.disasterType !== 'normal'
+            ? detection.combinedAnalysis.disasterType
+            : 'unknown';
+
+        const severity = detection.combinedAnalysis.severity;
+        const confidence = detection.combinedAnalysis.confidence;
+
+        // 3. Create Emergency Record in Database
+        const emergencyId = `EMG_IMG_${Date.now()}`;
+
+        const newEmergency = new Emergency({
+            emergencyId,
+            userId: userId || req.user?._id, // Ensure user ID is present
+            location: {
+                lat: location.lat,
+                lon: location.lon,
+                address: location.address || `${location.lat}, ${location.lon}`
+            },
+            userMessage: message || `Image report: ${disasterType} detected`,
+            aiAnalysis: {
+                disaster: {
+                    type: disasterType,
+                    confidence: confidence,
+                    indicators: detection.combinedAnalysis.corroboration || [],
+                    priority: severity === 'critical' ? 'critical' :
+                        severity === 'high' ? 'high' : 'medium'
+                },
+                sentiment: {
+                    // Image doesn't have sentiment, infer from severity
+                    urgency: severity === 'critical' ? 'critical' :
+                        severity === 'high' ? 'high' : 'medium',
+                    emotion: 'neutral',
+                    keywords: ['image_detection'],
+                    score: 0.5
+                },
+                severity: severity
+            },
+            response: {
+                resources: {
+                    immediate: [], // Will be filled by Decision Agent
+                    secondary: [],
+                    quantities: {}
+                }
+            },
+            status: 'analyzing', // Initial status
+            satelliteData: {
+                fires: detection.nasaData.fires,
+                // store original detection for debug/ref
+                satellite: detection
+            },
+            timeline: [{
+                status: 'received',
+                notes: 'Emergency reported via image analysis'
+            }]
+        });
+
+        await newEmergency.save();
+        console.log(`✅ Emergency ${emergencyId} saved to database`);
+
+        // 4. Trigger Decision Agent (Agent 3) to decide on resources/dispatch
+        // We run this asynchronously so we don't block the response? 
+        // Or strictly await if we want immediate feedback. Let's await for better UX.
+
+        try {
+            // Get inventory analysis (mock or real)
+            const inventoryAnalysis = await decisionAgent.analyzeInventory(newEmergency.location);
+
+            // Get context (time, weather)
+            const contextAnalysis = await decisionAgent.analyzeContext(newEmergency.location);
+
+            // Generate Decision
+            const decision = await decisionAgent.generateDecision(
+                newEmergency,
+                newEmergency.aiAnalysis,
+                inventoryAnalysis,
+                contextAnalysis
+            );
+
+            // Apply Decision (Update Resources & Status)
+            newEmergency.response.resources = decision.suggestedResources;
+
+            if (decision.shouldDispatch) {
+                newEmergency.status = 'dispatched'; // Will be updated by dispatch service
+                newEmergency.timeline.push({
+                    status: 'analyzing',
+                    notes: `Decision Agent approved dispatch (Value: ${decision.reasoning.financialValue})`
+                });
+                await newEmergency.save();
+
+                // Trigger actual dispatch
+                console.log(`🚀 Triggering dispatch for image emergency ${emergencyId}`);
+                await import('../services/dispatchService.js').then(async (module) => {
+                    const dispatchService = new module.default();
+                    await dispatchService.dispatchEmergency(emergencyId);
+                });
+            } else {
+                newEmergency.status = 'received'; // Pending manual review
+                newEmergency.timeline.push({
+                    status: 'analyzing',
+                    notes: `Decision Agent recommends manual review. Reason: ${decision.reasoning.summary}`
+                });
+                await newEmergency.save();
+
+                // Create Dispatch Request for manual approval
+                if (decision.confidence > 0) {
+                    const DispatchRequest = (await import('../models/DispatchRequest.js')).default;
+                    await DispatchRequest.create({
+                        emergencyId: newEmergency.emergencyId,
+                        priority: newEmergency.aiAnalysis.disaster.priority,
+                        severity: newEmergency.aiAnalysis.severity,
+                        location: newEmergency.location.address,
+                        requestedResources: [
+                            ...newEmergency.response.resources.immediate.map(name => ({
+                                name, category: 'General', quantity: 1
+                            })),
+                            ...newEmergency.response.resources.secondary.map(name => ({
+                                name, category: 'General', quantity: 1
+                            }))
+                        ],
+                        reasoning: decision.reasoning.summary,
+                        status: 'pending'
+                    });
+                    console.log(`📋 Created dispatch request for manual review: ${emergencyId}`);
+                }
+            }
+
+        } catch (decisionError) {
+            console.error('⚠️ Decision Agent failed for image request:', decisionError);
+            // Don't fail the whole request, just log and leave as 'received'
+        }
+
+        res.status(200).json({
+            success: true,
+            emergency: newEmergency,
+            detection: detection,
+            message: 'Image report processed and saved successfully'
+        });
+
+    } catch (error) {
+        console.error('❌ Image reporting error:', error.message);
+        res.status(500).json({
+            error: 'Failed to process image report',
+            details: error.message
+        });
+    }
+});
+
+/**
  * POST /api/emergency/analyze-image
- * Analyze disaster from image (Agent 2)
+ * Analyze disaster from image (Agent 2) - Analysis Only (No Save)
  */
 router.post('/analyze-image', async (req, res) => {
     try {
@@ -485,7 +653,7 @@ router.post('/ai-decision/:emergencyId', async (req, res) => {
             success: true,
             emergencyId,
             decision: decisionResult,
-            message: decisionResult.dispatchExecuted 
+            message: decisionResult.dispatchExecuted
                 ? 'Resources dispatched by AI decision agent'
                 : 'AI analysis complete - manual review recommended'
         });
@@ -507,7 +675,7 @@ router.get('/ai-capabilities', async (req, res) => {
     try {
         // Test Groq connection
         await decisionAgent.testGroqConnection();
-        
+
         const capabilities = {
             groqEnabled: decisionAgent.groqAvailable,
             groqModel: decisionAgent.modelName,
@@ -616,8 +784,8 @@ router.post('/public-request', async (req, res) => {
                 reasoning: decisionResult.reasoning,
                 dispatchPlan: decisionResult.dispatchPlan
             },
-            message: decisionResult.dispatchExecuted 
-                ? '🚀 Emergency analyzed and resources automatically dispatched by AI!' 
+            message: decisionResult.dispatchExecuted
+                ? '🚀 Emergency analyzed and resources automatically dispatched by AI!'
                 : 'Emergency request processed successfully. Awaiting manual dispatch approval.',
             userInfo: userInfo || 'Anonymous public request'
         });
@@ -684,7 +852,7 @@ router.put('/dispatch-requests/:id/approve', async (req, res) => {
         // Execute dispatch
         const DispatchService = (await import('../services/dispatchService.js')).default;
         const dispatchService = new DispatchService();
-        const dispatchResult = await dispatchService.dispatchEmergency(request.emergencyId, 
+        const dispatchResult = await dispatchService.dispatchEmergency(request.emergencyId,
             mongoose.Types.ObjectId.isValid(adminId) ? new mongoose.Types.ObjectId(adminId) : new mongoose.Types.ObjectId());
 
         res.json({
@@ -845,7 +1013,7 @@ router.get('/active-dispatches', async (req, res) => {
     try {
         // Include completed emergencies from last 24 hours for deletion
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        
+
         const dispatches = await Emergency.find({
             $or: [
                 { status: { $in: ['dispatched', 'en_route', 'delivered'] } },
@@ -876,7 +1044,7 @@ router.delete('/:emergencyId', async (req, res) => {
         const { emergencyId } = req.params;
 
         const emergency = await Emergency.findOne({ emergencyId });
-        
+
         if (!emergency) {
             return res.status(404).json({
                 success: false,
@@ -918,7 +1086,7 @@ router.put('/complete/:emergencyId', async (req, res) => {
         const { deliveryNotes, completedBy } = req.body;
 
         const emergency = await Emergency.findOne({ emergencyId });
-        
+
         if (!emergency) {
             return res.status(404).json({
                 success: false,
@@ -928,7 +1096,7 @@ router.put('/complete/:emergencyId', async (req, res) => {
 
         // Update status to completed
         emergency.status = 'completed';
-        
+
         // Add completion details
         if (emergency.dispatchDetails) {
             emergency.dispatchDetails.actualArrival = new Date();

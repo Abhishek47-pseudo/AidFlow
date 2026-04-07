@@ -35,7 +35,7 @@
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  padding: 3rem 2.5rem;
+  padding: 2rem 2rem;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   display: flex;
@@ -106,7 +106,7 @@ body.light .login-card {
 /* --- Input Fields --- */
 .form-field {
   width: 100%;
-  padding: 0.9rem 1rem;
+  padding: 0.75rem 1rem;
   border: 1.5px solid rgba(255, 255, 255, 0.25);
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.08);
@@ -190,12 +190,8 @@ body.light .form-field {
 /* --- Mobile Responsiveness --- */
 @media (max-width: 768px) {
   .login-card {
-    padding: 2rem 1.5rem;
+    padding: 1.5rem;
     margin: 1rem;
-  }
-
-  .section-title {
-    font-size: 1.9rem;
   }
 
   .login-form {
@@ -203,6 +199,6 @@ body.light .form-field {
   }
 
   .form-field {
-    padding: 0.85rem 0.95rem;
+    padding: 0.75rem 0.95rem;
   }
 }

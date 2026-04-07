@@ -59,6 +59,7 @@ const Header = () => {
             <li><button onClick={() => handleScroll('about')} className="nav-link">About</button></li>
             <li><button onClick={() => handleScroll('services')} className="nav-link">Services</button></li>
             <li><Link to="/emergency" className="nav-link emergency-link">🚨 Emergency</Link></li>
+            <li><Link to="/image-report" className="nav-link emergency-link" style={{ marginLeft: '10px' }}>📸 Visual</Link></li>
             <li><button onClick={() => handleScroll('team')} className="nav-link">Team</button></li>
             <li><button onClick={() => handleScroll('contact')} className="nav-link">Contact</button></li>
           </ul>
@@ -68,32 +69,32 @@ const Header = () => {
         <nav className={`nav right-nav ${isNavActive ? 'active' : ''}`}>
           <ul className="nav-list">
             {/* Emergency Operations Dropdown - Role-based visibility */}
-            {(canAccessRoute(userRole, '/emergency-dashboard') || 
-              canAccessRoute(userRole, '/dispatch-tracker') || 
-              canAccessRoute(userRole, '/live-disasters') || 
-              canAccessRoute(userRole, '/inventory-live') || 
+            {(canAccessRoute(userRole, '/emergency-dashboard') ||
+              canAccessRoute(userRole, '/dispatch-tracker') ||
+              canAccessRoute(userRole, '/live-disasters') ||
+              canAccessRoute(userRole, '/inventory-live') ||
               canAccessRoute(userRole, '/routing')) && (
-              <li className="auth-dropdown">
-                <span className="nav-link">🚨 Emergency Operations</span>
-                <div className="dropdown-menu">
-                  {canAccessRoute(userRole, '/emergency-dashboard') && (
-                    <Link to="/emergency-dashboard" className="dropdown-item">⚡ Emergency Dashboard</Link>
-                  )}
-                  {canAccessRoute(userRole, '/dispatch-tracker') && (
-                    <Link to="/dispatch-tracker" className="dropdown-item">📍 Dispatch Tracker</Link>
-                  )}
-                  {canAccessRoute(userRole, '/live-disasters') && (
-                    <Link to="/live-disasters" className="dropdown-item">🌍 Live Disasters</Link>
-                  )}
-                  {canAccessRoute(userRole, '/inventory-live') && (
-                    <Link to="/inventory-live" className="dropdown-item">📦 Live Inventory</Link>
-                  )}
-                  {canAccessRoute(userRole, '/routing') && (
-                    <Link to="/routing" className="dropdown-item">🗺️ Smart Routing</Link>
-                  )}
-                </div>
-              </li>
-            )}
+                <li className="auth-dropdown">
+                  <span className="nav-link">🚨 Emergency Operations</span>
+                  <div className="dropdown-menu">
+                    {canAccessRoute(userRole, '/emergency-dashboard') && (
+                      <Link to="/emergency-dashboard" className="dropdown-item">⚡ Emergency Dashboard</Link>
+                    )}
+                    {canAccessRoute(userRole, '/dispatch-tracker') && (
+                      <Link to="/dispatch-tracker" className="dropdown-item">📍 Dispatch Tracker</Link>
+                    )}
+                    {canAccessRoute(userRole, '/live-disasters') && (
+                      <Link to="/live-disasters" className="dropdown-item">🌍 Live Disasters</Link>
+                    )}
+                    {canAccessRoute(userRole, '/inventory-live') && (
+                      <Link to="/inventory-live" className="dropdown-item">📦 Live Inventory</Link>
+                    )}
+                    {canAccessRoute(userRole, '/routing') && (
+                      <Link to="/routing" className="dropdown-item">🗺️ Smart Routing</Link>
+                    )}
+                  </div>
+                </li>
+              )}
 
             {/* Role-based Dashboard Links */}
             {isAuthenticated && (
@@ -115,7 +116,7 @@ const Header = () => {
                 </div>
               </li>
             )}
-            
+
             {/* Account Dropdown */}
             <li className="auth-dropdown">
               <span className="nav-link">
@@ -132,8 +133,8 @@ const Header = () => {
                     <span className="dropdown-item" style={{ color: '#666', fontSize: '0.9em' }}>
                       Role: {userRole}
                     </span>
-                    <button 
-                      onClick={() => { logout(); navigate('/'); }} 
+                    <button
+                      onClick={() => { logout(); navigate('/'); }}
                       className="dropdown-item"
                       style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
                     >
@@ -143,7 +144,7 @@ const Header = () => {
                 )}
               </div>
             </li>
-            
+
             <li>
               <button
                 onClick={toggleTheme}

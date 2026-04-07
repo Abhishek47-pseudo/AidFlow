@@ -67,7 +67,7 @@
   max-width: 600px;
   margin: auto;
   background-color: var(--card-bg);
-  padding: 3rem;
+  padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 4px 20px var(--shadow-color);
   display: flex;
@@ -77,16 +77,16 @@
 }
 
 .section-title {
-  font-size: 2.5rem;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
   margin-bottom: 0.5rem;
 }
 
 .register-form {
   width: 100%;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .form-group {

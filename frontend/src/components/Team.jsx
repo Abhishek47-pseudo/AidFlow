@@ -3,9 +3,9 @@ import TeamMember from './TeamMember';
 
 const Team = () => {
   const teamMembers = [
-    { name: 'Aaditya Arya', photoUrl: 'imgs/Aaditya.jpg', role: '2310993753' },
+    { name: 'Aaditya Arya', photoUrl: 'imgs/Aaditya.jpg', role: '2310993752' },
     { name: 'Abhishek Kumar', photoUrl: 'imgs/Abhishek.jpg', role: '2310993765' },
-    { name: 'Parth Mehta', photoUrl: 'imgs/Parth.jpg', role: '2310993799' },
+    { name: 'Parth Mehta', photoUrl: 'imgs/Parth.jpg', role: '2310993899' },
   ];
 
   return (

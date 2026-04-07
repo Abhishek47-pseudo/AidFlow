@@ -136,8 +136,11 @@ body.light {
 .loading-message,
 .error-message {
   text-align: center;
-  padding: 2rem;
-  font-size: 1.2rem;
+  padding: 1rem;
+  font-size: 1rem;
+  max-width: 600px;
+  margin: 1.5rem auto;
+  border-radius: 8px;
 }
 
 /* --- Cinematic Section Transitions --- */

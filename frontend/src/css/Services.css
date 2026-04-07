@@ -28,8 +28,8 @@
 .services-grid {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
-  gap: 2.5rem;
-  margin-top: 3rem;
+  gap: 1.5rem;
+  margin-top: 2rem;
 }
 
 #services a {
@@ -62,7 +62,7 @@
   overflow: hidden;
   z-index: 0;
   background: rgba(41, 12, 12, 0.95);
-  padding: 32px 26px;
+  padding: 1.5rem 1.25rem;
   border-radius: 14px;
   border: 2px solid transparent;
   transition: all 0.4s ease-in-out;
@@ -114,9 +114,9 @@ body.light .service-card:hover {
 
 /* --- Icon & Text --- */
 .service-icon {
-  font-size: 3rem;
+  font-size: 2.25rem;
   color: var(--brand-color);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   transition: color 0.4s ease-in-out, transform 0.3s ease;
 }
 

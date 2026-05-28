@@ -10,11 +10,14 @@ class NLPEngine {
             // Hugging Face Transformers API
             sentiment: 'https://api-inference.huggingface.co/models/cardiffnlp/twitter-roberta-base-sentiment-latest',
             emotion: 'https://api-inference.huggingface.co/models/j-hartmann/emotion-english-distilroberta-base',
-            urgency: 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
             ner: 'https://api-inference.huggingface.co/models/dbmdz/bert-large-cased-finetuned-conll03-english'
         };
         
         this.apiKey = process.env.HUGGINGFACE_API_KEY || 'hf_demo_key';
+        
+        // In-memory cache for recent messages to reduce latency and API cost
+        this.cache = new Map();
+        this.maxCacheSize = 100;
         
         // Fallback rule-based patterns for offline mode
         this.fallbackPatterns = {
@@ -53,11 +56,72 @@ class NLPEngine {
     }
 
     /**
+     * Helper to call Hugging Face Inference API with timeout and retries
+     */
+    async callModelAPIWithTimeoutAndRetry(url, text, retries = 2, timeoutMs = 5000) {
+        let attempt = 0;
+        while (attempt <= retries) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ inputs: text }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeout);
+
+                if (response.ok) {
+                    return await response.json();
+                }
+
+                // If transient server error or rate limited, we can attempt a retry
+                if (response.status === 429 || response.status === 503) {
+                    console.warn(`⚠️ Hugging Face API transient error ${response.status} on attempt ${attempt + 1}. Retrying...`);
+                } else {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+            } catch (error) {
+                clearTimeout(timeout);
+                if (error.name === 'AbortError') {
+                    console.warn(`⚠️ Hugging Face API request timed out on attempt ${attempt + 1}. Retrying...`);
+                } else {
+                    console.warn(`⚠️ Hugging Face API request failed on attempt ${attempt + 1}: ${error.message}`);
+                }
+            }
+
+            attempt++;
+            if (attempt <= retries) {
+                // Wait briefly before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, attempt * 500));
+            }
+        }
+        throw new Error('All API retries failed.');
+    }
+
+    /**
      * Main NLP analysis function - uses multiple AI models
      */
     async analyzeEmergencyText(message) {
         console.log('🧠 Starting advanced NLP analysis...');
         
+        // Check cache first
+        const cached = this.cache.get(message);
+        if (cached) {
+            console.log('🧠 NLP cache hit for message.');
+            // Return cached result with 0ms updated processingTime
+            return {
+                ...cached,
+                processingTime: 0
+            };
+        }
+
         const analysis = {
             originalText: message,
             preprocessed: this.preprocessText(message),
@@ -104,6 +168,14 @@ class NLPEngine {
             analysis.processingTime = Date.now() - analysis.processingTime;
             
             console.log(`✅ NLP analysis complete in ${analysis.processingTime}ms`);
+
+            // Save to cache
+            if (this.cache.size >= this.maxCacheSize) {
+                const firstKey = this.cache.keys().next().value;
+                this.cache.delete(firstKey);
+            }
+            this.cache.set(message, analysis);
+
             return analysis;
 
         } catch (error) {
@@ -117,24 +189,12 @@ class NLPEngine {
      */
     async analyzeSentimentWithAI(text) {
         try {
-            const response = await fetch(this.models.sentiment, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ inputs: text })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                return this.processSentimentResult(result);
-            }
+            const result = await this.callModelAPIWithTimeoutAndRetry(this.models.sentiment, text);
+            return this.processSentimentResult(result);
         } catch (error) {
-            console.warn('Sentiment API error:', error.message);
+            console.warn('Sentiment API error, using fallback:', error.message);
+            return this.fallbackSentimentAnalysis(text);
         }
-        
-        return this.fallbackSentimentAnalysis(text);
     }
 
     /**
@@ -142,24 +202,12 @@ class NLPEngine {
      */
     async analyzeEmotionWithAI(text) {
         try {
-            const response = await fetch(this.models.emotion, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ inputs: text })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                return this.processEmotionResult(result);
-            }
+            const result = await this.callModelAPIWithTimeoutAndRetry(this.models.emotion, text);
+            return this.processEmotionResult(result);
         } catch (error) {
-            console.warn('Emotion API error:', error.message);
+            console.warn('Emotion API error, using fallback:', error.message);
+            return this.fallbackEmotionAnalysis(text);
         }
-        
-        return this.fallbackEmotionAnalysis(text);
     }
 
     /**
@@ -167,24 +215,12 @@ class NLPEngine {
      */
     async extractEntitiesWithAI(text) {
         try {
-            const response = await fetch(this.models.ner, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ inputs: text })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                return this.processNERResult(result);
-            }
+            const result = await this.callModelAPIWithTimeoutAndRetry(this.models.ner, text);
+            return this.processNERResult(result);
         } catch (error) {
-            console.warn('NER API error:', error.message);
+            console.warn('NER API error, using fallback:', error.message);
+            return this.fallbackEntityExtraction(text);
         }
-        
-        return this.fallbackEntityExtraction(text);
     }
 
     /**
@@ -440,7 +476,8 @@ class NLPEngine {
         for (const [emotion, keywords] of Object.entries(this.fallbackPatterns.emotions)) {
             for (const keyword of keywords) {
                 if (lowerText.includes(keyword)) {
-                    const score = 0.7 + Math.random() * 0.2; // Simulate confidence
+                    // Deterministic score based on match
+                    const score = 0.85;
                     if (score > maxScore) {
                         maxScore = score;
                         detectedEmotion = emotion;
@@ -450,8 +487,8 @@ class NLPEngine {
         }
         
         return {
-            primary: { label: detectedEmotion, score: maxScore },
-            confidence: maxScore
+            primary: { label: detectedEmotion, score: maxScore || 0.5 },
+            confidence: maxScore || 0.5
         };
     }
 
@@ -479,12 +516,25 @@ class NLPEngine {
         const locationPattern = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g;
         const matches = text.match(locationPattern) || [];
         
-        matches.forEach(match => {
-            entities.locations.push({
-                word: match,
-                entity: 'LOCATION',
-                confidence: 0.5
-            });
+        // Filter out common non-entity capitalized words
+        const blacklisted = new Set([
+            'Help', 'Urgent', 'Emergency', 'Please', 'Sos', 'Need', 'I', 'We', 
+            'The', 'A', 'An', 'Our', 'They', 'He', 'She', 'It', 'Is', 'Are', 
+            'Was', 'Were', 'Have', 'Has', 'Had', 'Trapped', 'Dying', 'Bleeding',
+            'Fire', 'Flood', 'Earthquake', 'Landslide', 'Storm', 'Attention'
+        ]);
+
+        const uniqueMatches = [...new Set(matches)];
+        uniqueMatches.forEach(match => {
+            if (!blacklisted.has(match)) {
+                const entityObj = {
+                    word: match,
+                    entity: 'LOCATION',
+                    confidence: 0.7
+                };
+                entities.locations.push(entityObj);
+                entities.all.push(entityObj);
+            }
         });
         
         return entities;

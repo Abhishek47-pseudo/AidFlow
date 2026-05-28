@@ -55,6 +55,20 @@ class EmergencyAIAgent {
             console.log('🤖 Agent 1: NLP Sentiment Analysis');
             const nlpAnalysis = await this.agent1_nlp.analyzeEmergencyText(emergencyData.message);
             
+            const analysisObj = {
+                disaster: disasterAnalysis,
+                sentiment: {
+                    urgency: nlpAnalysis.urgency?.level || 'medium',
+                    emotion: typeof nlpAnalysis.emotion?.primary === 'object' 
+                        ? (nlpAnalysis.emotion.primary.label || 'neutral') 
+                        : (nlpAnalysis.emotion?.primary || 'neutral'),
+                    keywords: (nlpAnalysis.urgency?.factors?.keywordMatches || []).map(m => m.keyword),
+                    score: nlpAnalysis.sentiment?.score !== undefined ? nlpAnalysis.sentiment.score : (nlpAnalysis.urgency?.score || 0.5)
+                },
+                nlp: nlpAnalysis,
+                severity: this.calculateSeverity(disasterAnalysis, nlpAnalysis)
+            };
+
             // Step 4: Determine required resources
             const resourcePlan = await this.determineResourceNeeds(disasterAnalysis, nlpAnalysis);
             
@@ -66,18 +80,14 @@ class EmergencyAIAgent {
             const routingPlan = await this.agent3_routing.calculateOptimalRoute({
                 emergencyId: emergencyId,
                 location: emergencyData,
-                analysis: { disaster: disasterAnalysis, nlp: nlpAnalysis, severity: this.calculateSeverity(disasterAnalysis, nlpAnalysis) },
+                analysis: analysisObj,
                 response: { resources: resourcePlan }
             });
             
             return {
                 emergencyId: emergencyId,
                 location: { lat: emergencyData.lat, lon: emergencyData.lon },
-                analysis: {
-                    disaster: disasterAnalysis,
-                    nlp: nlpAnalysis,
-                    severity: this.calculateSeverity(disasterAnalysis, nlpAnalysis)
-                },
+                analysis: analysisObj,
                 response: {
                     resources: resourcePlan,
                     routing: routingPlan,
@@ -180,161 +190,6 @@ class EmergencyAIAgent {
         }
 
         return analysis;
-    }
-
-    /**
-     * Advanced AI-powered sentiment and urgency analysis
-     */
-    async analyzeSentiment(message) {
-        // Enhanced keyword analysis with weights and context
-        const urgencyPatterns = {
-            critical: {
-                keywords: ['help', 'emergency', 'urgent', 'dying', 'trapped', 'stuck', 'injured', 'bleeding', 'can\'t breathe', 'losing consciousness'],
-                phrases: ['need help now', 'going to die', 'can\'t move', 'severe pain', 'losing blood'],
-                weight: 0.9
-            },
-            high: {
-                keywords: ['need', 'please', 'quickly', 'fast', 'hurt', 'pain', 'scared', 'dangerous', 'unsafe'],
-                phrases: ['need assistance', 'getting worse', 'very scared', 'please hurry'],
-                weight: 0.7
-            },
-            medium: {
-                keywords: ['assistance', 'support', 'aid', 'rescue', 'worried', 'concerned'],
-                phrases: ['need some help', 'could use assistance', 'bit worried'],
-                weight: 0.5
-            },
-            low: {
-                keywords: ['check', 'update', 'status', 'information', 'wondering'],
-                phrases: ['just checking', 'status update', 'wondering about'],
-                weight: 0.3
-            }
-        };
-
-        const sentiment = {
-            urgency: 'medium',
-            emotion: 'neutral',
-            keywords: [],
-            phrases: [],
-            score: 0.5,
-            confidence: 0,
-            aiAnalysis: {}
-        };
-
-        const lowerMessage = message.toLowerCase();
-        let maxScore = 0;
-        let totalMatches = 0;
-
-        // Advanced pattern matching with context awareness
-        for (const [level, pattern] of Object.entries(urgencyPatterns)) {
-            let levelScore = 0;
-            let matches = 0;
-
-            // Check keywords
-            for (const keyword of pattern.keywords) {
-                if (lowerMessage.includes(keyword)) {
-                    sentiment.keywords.push(keyword);
-                    levelScore += pattern.weight;
-                    matches++;
-                }
-            }
-
-            // Check phrases (higher weight)
-            for (const phrase of pattern.phrases) {
-                if (lowerMessage.includes(phrase)) {
-                    sentiment.phrases.push(phrase);
-                    levelScore += pattern.weight * 1.5; // Phrases get higher weight
-                    matches++;
-                }
-            }
-
-            if (matches > 0) {
-                totalMatches += matches;
-                if (levelScore > maxScore) {
-                    maxScore = levelScore;
-                    sentiment.urgency = level;
-                    sentiment.score = Math.min(levelScore, 1.0);
-                }
-            }
-        }
-
-        // AI-powered emotion detection
-        sentiment.emotion = this.detectEmotion(lowerMessage);
-        
-        // Calculate confidence based on number of matches
-        sentiment.confidence = Math.min(totalMatches * 0.2, 1.0);
-
-        // Advanced linguistic analysis
-        sentiment.aiAnalysis = {
-            messageLength: message.length,
-            exclamationCount: (message.match(/!/g) || []).length,
-            questionCount: (message.match(/\?/g) || []).length,
-            capsRatio: (message.match(/[A-Z]/g) || []).length / message.length,
-            repeatedWords: this.findRepeatedWords(lowerMessage),
-            timeIndicators: this.extractTimeIndicators(lowerMessage)
-        };
-
-        // Adjust score based on linguistic features
-        if (sentiment.aiAnalysis.exclamationCount > 2) sentiment.score += 0.1;
-        if (sentiment.aiAnalysis.capsRatio > 0.3) sentiment.score += 0.15;
-        if (sentiment.aiAnalysis.repeatedWords.length > 0) sentiment.score += 0.1;
-
-        sentiment.score = Math.min(sentiment.score, 1.0);
-
-        return sentiment;
-    }
-
-    /**
-     * AI-powered emotion detection from text
-     */
-    detectEmotion(message) {
-        const emotionPatterns = {
-            panic: ['panic', 'terrified', 'scared to death', 'freaking out'],
-            fear: ['scared', 'afraid', 'frightened', 'worried', 'anxious'],
-            pain: ['hurt', 'pain', 'agony', 'suffering', 'aching'],
-            desperation: ['desperate', 'hopeless', 'can\'t take it', 'giving up'],
-            calm: ['okay', 'fine', 'stable', 'managing', 'under control']
-        };
-
-        for (const [emotion, keywords] of Object.entries(emotionPatterns)) {
-            for (const keyword of keywords) {
-                if (message.includes(keyword)) {
-                    return emotion;
-                }
-            }
-        }
-        return 'neutral';
-    }
-
-    /**
-     * Find repeated words (indicates stress/urgency)
-     */
-    findRepeatedWords(message) {
-        const words = message.split(' ');
-        const wordCount = {};
-        const repeated = [];
-
-        words.forEach(word => {
-            if (word.length > 3) { // Only count meaningful words
-                wordCount[word] = (wordCount[word] || 0) + 1;
-                if (wordCount[word] === 2) {
-                    repeated.push(word);
-                }
-            }
-        });
-
-        return repeated;
-    }
-
-    /**
-     * Extract time-related urgency indicators
-     */
-    extractTimeIndicators(message) {
-        const timePatterns = [
-            'right now', 'immediately', 'asap', 'urgent', 'quickly',
-            'fast', 'hurry', 'soon', 'minutes', 'seconds'
-        ];
-
-        return timePatterns.filter(pattern => message.includes(pattern));
     }
 
     /**

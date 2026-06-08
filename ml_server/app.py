@@ -46,7 +46,7 @@ def startup_event():
     try:
         model = get_model()
     except Exception as e:
-        print(f"❌ Failed to load model during startup: {e}")
+        print(f"Failed to load model during startup: {e}")
         model = None
 
 @app.get("/health", status_code=status.HTTP_200_OK)

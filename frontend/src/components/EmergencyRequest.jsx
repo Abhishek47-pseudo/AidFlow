@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { MapPin, AlertTriangle, Send, Clock, CheckCircle } from 'lucide-react';
 import { UserContext } from './UserContext';
 import { createAuthenticatedAxios } from '../utils/api';
 
-const EmergencyRequest = ({ userId }) => {
-    const { token } = useContext(UserContext);
+const EmergencyRequest = ({ userId: propUserId }) => {
+    const { token, userId: contextUserId } = useContext(UserContext);
+    const userId = contextUserId || propUserId;
     const [location, setLocation] = useState({ lat: null, lon: null });
     const [message, setMessage] = useState('');
     const [address, setAddress] = useState('');
@@ -13,7 +14,7 @@ const EmergencyRequest = ({ userId }) => {
     const [locationError, setLocationError] = useState('');
 
     // Get user's current location
-    const getCurrentLocation = () => {
+    const getCurrentLocation = useCallback(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -22,8 +23,6 @@ const EmergencyRequest = ({ userId }) => {
                         lon: position.coords.longitude
                     });
                     setLocationError('');
-                    // Reverse geocoding to get address
-                    reverseGeocode(position.coords.latitude, position.coords.longitude);
                 },
                 (error) => {
                     setLocationError('Unable to get your location. Please enable location services.');
@@ -33,10 +32,10 @@ const EmergencyRequest = ({ userId }) => {
         } else {
             setLocationError('Geolocation is not supported by this browser.');
         }
-    };
+    }, []);
 
     // Reverse geocoding to get readable address
-    const reverseGeocode = async (lat, lon) => {
+    const reverseGeocode = useCallback(async (lat, lon) => {
         try {
             // Using a free geocoding service (you can replace with your preferred service)
             const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
@@ -45,7 +44,14 @@ const EmergencyRequest = ({ userId }) => {
         } catch (error) {
             setAddress(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
         }
-    };
+    }, []);
+
+    // Automatically reverse geocode location changes
+    useEffect(() => {
+        if (location.lat && location.lon) {
+            reverseGeocode(location.lat, location.lon);
+        }
+    }, [location.lat, location.lon, reverseGeocode]);
 
     // Submit emergency request
     const submitEmergencyRequest = async (e) => {
@@ -86,7 +92,7 @@ const EmergencyRequest = ({ userId }) => {
 
     useEffect(() => {
         getCurrentLocation();
-    }, []);
+    }, [getCurrentLocation]);
 
     if (emergencyResponse) {
         return (
@@ -201,6 +207,27 @@ const EmergencyRequest = ({ userId }) => {
                             >
                                 Get My Location
                             </button>
+                            <div className="manual-location-inputs" style={{ marginTop: '15px', borderTop: '1px solid #444', paddingTop: '10px' }}>
+                                <p style={{ margin: '5px 0', fontSize: '0.9em', color: '#888' }}>Or enter coordinates manually:</p>
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                                    <input 
+                                        type="number" 
+                                        step="any" 
+                                        placeholder="Latitude" 
+                                        onChange={(e) => setLocation(prev => ({ ...prev, lat: parseFloat(e.target.value) }))}
+                                        className="form-field"
+                                        style={{ flex: 1, padding: '8px', background: '#222', border: '1px solid #444', borderRadius: '4px', color: '#fff' }}
+                                    />
+                                    <input 
+                                        type="number" 
+                                        step="any" 
+                                        placeholder="Longitude" 
+                                        onChange={(e) => setLocation(prev => ({ ...prev, lon: parseFloat(e.target.value) }))}
+                                        className="form-field"
+                                        style={{ flex: 1, padding: '8px', background: '#222', border: '1px solid #444', borderRadius: '4px', color: '#fff' }}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

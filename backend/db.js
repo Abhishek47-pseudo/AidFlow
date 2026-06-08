@@ -67,6 +67,17 @@ const connectDB = async () => {
                     { _id: new mongoose.Types.ObjectId(), name: 'emergency_food', category: 'Food', currentStock: 500, cost: 5, location: { name: 'Warehouse Alpha' } },
                     { _id: new mongoose.Types.ObjectId(), name: 'emergency_blankets', category: 'Shelter', currentStock: 300, cost: 15, location: { name: 'Warehouse Alpha' } }
                 ];
+            } else if (this.modelName === 'Location') {
+                result = [
+                    { _id: new mongoose.Types.ObjectId(), name: 'Warehouse Alpha' },
+                    { _id: new mongoose.Types.ObjectId(), name: 'Warehouse Beta' },
+                    { _id: new mongoose.Types.ObjectId(), name: 'Chandigarh Central Hub' },
+                    { _id: new mongoose.Types.ObjectId(), name: 'Amritsar Relief Center' },
+                    { _id: new mongoose.Types.ObjectId(), name: 'Ludhiana Warehouse' },
+                    { _id: new mongoose.Types.ObjectId(), name: 'Jalandhar Supply Depot' },
+                    { _id: new mongoose.Types.ObjectId(), name: 'Patiala Distribution Point' },
+                    { _id: new mongoose.Types.ObjectId(), name: 'Bathinda Storage Facility' }
+                ];
             }
             return mockQuery(result);
         };
@@ -149,6 +160,31 @@ const connectDB = async () => {
         mongoose.Model.updateOne = function(query, update, options) {
             console.log(`[Mock DB] updateOne on ${this.modelName}`);
             return mockQuery({ n: 1, nModified: 1, ok: 1 });
+        };
+
+        mongoose.Model.countDocuments = function() {
+            console.log(`[Mock DB] countDocuments on ${this.modelName}`);
+            return mockQuery(0);
+        };
+
+        mongoose.Model.estimatedDocumentCount = function() {
+            console.log(`[Mock DB] estimatedDocumentCount on ${this.modelName}`);
+            return mockQuery(0);
+        };
+
+        mongoose.Model.insertMany = async function(arr) {
+            console.log(`[Mock DB] insertMany on ${this.modelName} (inserted ${arr ? arr.length : 0} documents)`);
+            if (Array.isArray(arr)) {
+                return arr.map(item => {
+                    const doc = {
+                        _id: item._id || new mongoose.Types.ObjectId(),
+                        ...item,
+                        save: async function() { return this; }
+                    };
+                    return doc;
+                });
+            }
+            return arr || [];
         };
 
         mongoose.Model.create = async function(doc) {

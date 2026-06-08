@@ -1,6 +1,6 @@
 import os
 import torch
-import torchvision.models as models
+import timm
 
 # The 15 multilabel classes in order of LADI dataset columns
 CLASS_NAMES = [
@@ -25,8 +25,7 @@ _model = None
 
 def get_model(model_path: str = None) -> torch.nn.Module:
     """
-    Loads the EfficientNet B3 model structure, overrides the classifier
-    with the 15 output dimensions, loads the state dict, and caches it.
+    Loads the EfficientNet B3 model structure via timm, loads the state dict, and caches it.
     """
     global _model
     if _model is not None:
@@ -46,14 +45,10 @@ def get_model(model_path: str = None) -> torch.nn.Module:
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model file not found at {model_path}")
 
-    # 1. Initialize empty EfficientNet B3 architecture
-    model = models.efficientnet_b3(weights=None)
-    
-    # 2. Modify the classifier to match the 15 output dimensions.
-    # The saved model replaced model.classifier directly with a Linear layer.
-    model.classifier = torch.nn.Linear(1536, 15)
+    # 1. Initialize empty EfficientNet B3 architecture using timm (15 classes)
+    model = timm.create_model('efficientnet_b3', pretrained=False, num_classes=15)
 
-    # 3. Load the weights dictionary
+    # 2. Load the weights dictionary
     state_dict = torch.load(model_path, map_location="cpu")
     model.load_state_dict(state_dict)
     

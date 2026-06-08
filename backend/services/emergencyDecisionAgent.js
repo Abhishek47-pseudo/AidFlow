@@ -286,7 +286,13 @@ Based on this analysis, make a decision about autonomous resource dispatch. Cons
 Respond with a JSON object containing:
 {
   "shouldDispatch": boolean,
+  "requires_immediate_dispatch": boolean, // must match shouldDispatch
   "confidence": number (0-1),
+  "sentiment": "POSITIVE|NEGATIVE|NEUTRAL",
+  "emotion": "string (panic|fear|pain|desperation|anger|sadness|calm|neutral)",
+  "urgency_score": number (0-10), // urgency score evaluated out of 10
+  "entities": ["string"], // array of named entities such as people, locations, organizations extracted from user message
+  "risk_level": "low|medium|high|critical", // risk evaluation level
   "dispatchPlan": {
     "priority": "low|medium|high|critical",
     "estimatedResponseTime": number (minutes),
@@ -382,9 +388,18 @@ Respond with a JSON object containing:
             }
         }
 
+        const sentimentLabel = bertAnalysis?.sentiment?.polarity > 0 ? 'POSITIVE' : (bertAnalysis?.sentiment?.polarity < 0 ? 'NEGATIVE' : 'NEUTRAL');
+        const entitiesList = (bertAnalysis?.nlp?.entities?.all || []).map(e => e.word);
+
         return {
             shouldDispatch,
+            requires_immediate_dispatch: shouldDispatch,
             confidence: shouldDispatch ? Math.min(confidence + 0.1, 1) : confidence,
+            sentiment: sentimentLabel,
+            emotion: bertAnalysis?.sentiment?.emotion || 'neutral',
+            urgency_score: urgencyScore,
+            entities: entitiesList,
+            risk_level: severity,
             dispatchPlan: {
                 priority: severity,
                 estimatedResponseTime: await this.calculateResponseTime(emergencyData, bertAnalysis, contextAnalysis, inventoryAnalysis),

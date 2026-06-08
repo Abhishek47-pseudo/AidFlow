@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { UserContext } from './UserContext';
-import { canAccessRoute } from '../utils/rbac';
+import { canAccessRoute, hasPermission } from '../utils/rbac';
 
 /**
  * Protected Route Component
@@ -25,7 +25,6 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermissions, fallbackP
 
   // Check permissions (if specified)
   if (requiredPermissions) {
-    const { hasPermission } = require('../utils/rbac');
     const permissions = Array.isArray(requiredPermissions) 
       ? requiredPermissions 
       : [requiredPermissions];

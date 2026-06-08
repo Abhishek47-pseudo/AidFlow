@@ -30,6 +30,17 @@ export const UserProvider = ({ children }) => {
       }
       const decoded = jwtDecode(jwt);
       
+      // Check if token is expired
+      const currentTime = Date.now() / 1000;
+      if (decoded.exp && decoded.exp < currentTime) {
+        console.warn("Authentication token is expired. Clearing session.");
+        setUserRole(null);
+        setUserId(null);
+        setToken(null);
+        localStorage.removeItem('userToken');
+        return;
+      }
+      
       // Ensure the role property exists and is a valid string
       const role = decoded.role || 'viewer'; 
       

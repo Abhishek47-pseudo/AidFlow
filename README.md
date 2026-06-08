@@ -147,7 +147,7 @@ Output: {
 
 - **Node.js** 16+ 
 - **MongoDB** 4.4+ (Local or Atlas)
-- **Python** 3.8+ (for disaster agent)
+- **Python** 3.8+ (for disaster agent) / **Python 3.11+** (for ML service)
 - **npm** or **yarn**
 
 ### Installation
@@ -189,9 +189,26 @@ pip install -r requirements.txt
 python disaster_agent.py
 ```
 
-5. **Access Application**
+5. **FastAPI ML Inference Service**
+```bash
+cd ml_server
+python -m venv .venv
+
+# Activate environment:
+# Windows (PowerShell): .venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+
+# Start FastAPI model server
+uvicorn app:app --reload --port 8000
+```
+
+6. **Access Application**
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:5000
+- **ML Inference Service:** http://localhost:8000
 - **MongoDB:** Configure connection string in .env
 
 ---
@@ -301,32 +318,49 @@ AidFlow/
 ├── 📁 backend/                    # Node.js Backend
 │   ├── 📁 config/                # Database & app configuration
 │   ├── 📁 data/                  # Seed data & CSV predictions
+│   ├── 📁 library/               # Helper utilities & library files
 │   ├── 📁 middleware/            # Auth & validation middleware
 │   ├── 📁 models/                # MongoDB Mongoose models
 │   │   ├── User.js              # User authentication & roles
 │   │   ├── Emergency.js         # Emergency requests & AI analysis
 │   │   ├── Inventory.js         # Inventory, donations, requests
-│   │   └── Disaster.js          # Disaster zones & events
+│   │   ├── Disaster.js          # Disaster database model
+│   │   ├── DisasterZone.js      # Active disaster zones schema
+│   │   ├── AgentOutput.js       # AI Agent outputs & inference logs
+│   │   ├── DispatchRequest.js   # Resource dispatch records
+│   │   ├── RoutingHistory.js    # Log of calculated paths
+│   │   └── SeverityLog.js       # Severity level audit log
 │   ├── 📁 routes/                # API route handlers
 │   │   ├── emergency.js         # Emergency management APIs
 │   │   ├── agents.js            # AI agents endpoints
 │   │   ├── inventory.js         # Inventory management APIs
-│   │   └── disasters.js         # Disaster monitoring APIs
+│   │   ├── disasters.js         # Disaster monitoring APIs
+│   │   └── dataManagement.js    # Data seeding & reset APIs
+│   ├── 📁 scripts/               # Utility shell & database scripts
 │   ├── 📁 services/              # Business logic & AI agents
 │   │   ├── aiAgent.js           # Main AI orchestrator
 │   │   ├── nlpEngine.js         # Agent 1: NLP processing
-│   │   ├── imageAgent.js        # Agent 2: Image analysis
+│   │   ├── imageDisasterDetection.js # Agent 2: Image analysis service
 │   │   ├── smartRouting.js      # Agent 3: Routing optimization
 │   │   ├── dispatchService.js   # Dispatch automation
-│   │   └── routingService.js    # OSRM integration
+│   │   ├── routingService.js    # OSRM integration
+│   │   ├── emergencyDecisionAgent.js # Automated dispatch decision engine
+│   │   ├── liveDisasterService.js # Live disaster tracking feeds
+│   │   ├── notificationService.js # SMS/Email notification alerts
+│   │   ├── realisticTimingService.js # ETA updates & adjustments
+│   │   ├── trafficService.js    # Simulated traffic condition updates
+│   │   └── weatherService.js    # Meteorological factors for routing
 │   ├── 📁 tests/                # Unit & integration tests
 │   ├── 📁 utils/                # Utility functions
 │   ├── server.js                # Main server entry point
+│   ├── db.js                    # Database connection setup
+│   ├── seedAll.js               # Main database seeding script
 │   └── package.json             # Backend dependencies
 │
 ├── 📁 frontend/                   # React Frontend
 │   ├── 📁 public/               # Static assets
 │   └── 📁 src/
+│       ├── 📁 assets/           # Local static media & image assets
 │       ├── 📁 components/       # React components (30+)
 │       │   ├── EmergencyRequest.jsx      # Emergency submission
 │       │   ├── EmergencyDashboard.jsx    # Admin emergency management
@@ -337,17 +371,28 @@ AidFlow/
 │       │   ├── RecipientPage.jsx         # Recipient dashboard
 │       │   ├── ReliefAnalytics.jsx       # Analytics dashboard
 │       │   ├── RoutingVisualization.jsx  # Route display
-│       │   └── [25+ more components]
-│       ├── 📁 css/              # Stylesheets (15+ files)
+│       │   └── [24+ more components]
+│       ├── 📁 css/              # Stylesheets (20+ files)
+│       ├── 📁 utils/            # Frontend core functions (API, RBAC)
 │       ├── App.js               # Main React application
+│       ├── index.js             # Frontend entry point
 │       └── package.json         # Frontend dependencies
 │
-├── 📁 agents/                     # Python AI Agent
+├── 📁 agents/                     # Python AI Agent (USGS/FIRMS Monitor)
 │   ├── disaster_agent.py        # Agent 4: Real-time monitoring
-│   ├── requirements.txt         # Python dependencies
-│   └── .env                     # Python environment config
+│   └── requirements.txt         # Python dependencies
+│
+├── 📁 ml_server/                  # FastAPI Machine Learning Service
+│   ├── 📁 .venv/                # Python virtual environment
+│   ├── Dockerfile               # Containerization definition
+│   ├── README.md                # ML Server documentation
+│   ├── app.py                   # FastAPI application & entry point
+│   ├── model_loader.py          # PyTorch model load utility
+│   ├── requirements.txt         # ML Python dependencies
+│   └── best_effnet_b3_multilabel.pth # Pre-trained model weights
 │
 ├── 📁 docs/                       # Comprehensive Documentation
+│   ├── 📁 audits/               # NLP Audits and performance logs
 │   ├── PROJECT_OVERVIEW.md      # System overview
 │   ├── SYSTEM_ARCHITECTURE.md   # Technical architecture
 │   ├── AI_AGENTS_DOCUMENTATION.md # AI agents detailed guide
@@ -356,8 +401,10 @@ AidFlow/
 │   ├── DATABASE_SCHEMA.md       # Database design
 │   └── [15+ more documentation files]
 │
-├── 📁 node_modules/              # Root dependencies
-├── package.json                  # Root package configuration
+├── CONSISTENCY_IMPLEMENTATION_SUMMARY.md # Summary of system consistency updates
+├── PROJECT_SUMMARY.md            # Executive system summary
+├── REALISTIC_TIMING_IMPROVEMENTS.md # Documentation of timing optimization
+├── SETUP_GUIDE.md                # Quick-start system setup guide
 ├── README.md                     # This file
 └── .gitignore                   # Git ignore rules
 ```

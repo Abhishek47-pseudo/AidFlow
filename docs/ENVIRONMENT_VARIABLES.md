@@ -39,6 +39,23 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ---
 
+### `GROQ_API_KEY`
+**Purpose:** Groq Cloud API Key for ultra-fast Llama-based decision agent and routing refinements  
+**Used in:**
+- `backend/services/emergencyDecisionAgent.js` (line 15) - Autonomous emergency dispatch reasoning
+- `backend/services/realisticTimingService.js` (line 13) - AI-powered ETA refinement
+- **Get from:** https://console.groq.com/keys
+
+---
+
+### `GROQ_MODEL`
+**Purpose:** Model identifier for Groq reasoning tasks  
+**Used in:**
+- `backend/services/emergencyDecisionAgent.js` (line 16) - LLM Model designation (default: `llama-3.1-70b-versatile`)
+- `backend/services/realisticTimingService.js` (line 386) - LLM Model designation (default: `llama-3.1-8b-instant`)
+
+---
+
 ## 🟡 Optional Variables
 
 ### `PORT`
@@ -97,10 +114,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ---
 
 ### `HUGGINGFACE_API_KEY`
-**Purpose:** Hugging Face API for NLP processing  
+**Purpose:** Hugging Face API key for transformer-based NLP extraction (RoBERTa sentiment/emotion, BERT NER)  
 **Used in:**
 - `backend/services/nlpEngine.js` (line 17) - Sentiment analysis, emotion detection, NER
-- **Fallback:** Uses `'hf_demo_key'` if not set
+- **Fallback:** If not set, the system falls back to a deterministic, offline rule-based extraction system (using local dictionary lookups and keyword/phrase matching).
 - **Get from:** https://huggingface.co/settings/tokens
 
 ---

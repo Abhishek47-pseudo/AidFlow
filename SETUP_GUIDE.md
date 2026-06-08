@@ -176,35 +176,45 @@ The system uses Groq AI for ultra-fast emergency decision making:
 
 ```
 aidflow/
-├── backend/
-│   ├── config/              # Configuration files
-│   ├── data/                # Seed data
-│   ├── middleware/          # Express middleware
-│   ├── models/              # MongoDB models
-│   ├── routes/              # API routes
-│   ├── services/            # Business logic
-│   │   ├── emergencyDecisionAgent.js  # Groq AI agent
-│   │   ├── nlpEngine.js               # NLP processing
-│   │   ├── imageDisasterDetection.js  # Image analysis
-│   │   └── smartRouting.js            # Route optimization
-│   ├── utils/               # Utility functions
+├── backend/                 # Node.js Express backend
+│   ├── config/              # Database and key configurations
+│   ├── data/                # Seed JSON data
+│   ├── library/             # Library & helper scripts
+│   ├── middleware/          # JWT auth & role validation middleware
+│   ├── models/              # Mongoose database models
+│   ├── routes/              # Express API route files
+│   ├── scripts/             # Utility seeding & setup scripts
+│   ├── services/            # Core business logic & AI services
+│   ├── tests/               # Backend tests
+│   ├── utils/               # Utility helper modules
 │   ├── .env                 # Environment variables (create this)
-│   ├── server.js            # Main server file
-│   └── package.json         # Dependencies
+│   ├── server.js            # Main Express entry point
+│   └── package.json         # Backend dependencies
 │
-├── frontend/
-│   ├── public/              # Static files
+├── frontend/                # React single page application
+│   ├── public/              # Public HTML templates & static files
 │   ├── src/
-│   │   ├── components/      # React components
-│   │   ├── css/             # Stylesheets
-│   │   ├── utils/           # Utility functions
-│   │   ├── App.js           # Main app component
-│   │   └── index.js         # Entry point
-│   └── package.json         # Dependencies
+│   │   ├── assets/          # Static media assets (e.g. images)
+│   │   ├── components/      # React functional components
+│   │   ├── css/             # Stylesheets (vanilla CSS files)
+│   │   ├── utils/           # Frontend API and RBAC helpers
+│   │   ├── App.js           # React router & core wrapper
+│   │   └── index.js         # Frontend entry point
+│   └── package.json         # Frontend dependencies
 │
-├── docs/                    # Documentation
-├── .gitignore              # Git ignore rules
-└── README.md               # Project overview
+├── agents/                  # Python Agent 4 (USGS/FIRMS Disaster Monitor)
+│   ├── disaster_agent.py    # Main monitoring execution script
+│   └── requirements.txt     # Python requirements for monitoring agent
+│
+├── ml_server/               # FastAPI EfficientNet Inference Microservice
+│   ├── app.py               # FastAPI entry point & API endpoints
+│   ├── model_loader.py      # EfficientNet model loader helper
+│   ├── requirements.txt     # Python requirements for ML service
+│   └── best_effnet_b3_multilabel.pth # Pre-trained model weights
+│
+├── docs/                    # Architectural & module documentation
+├── .gitignore              # Git ignore patterns
+└── README.md               # Main project overview README
 ```
 
 ## 🔧 Available Scripts

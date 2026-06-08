@@ -194,9 +194,39 @@ class ImageDisasterDetectionAgent {
      * Process EfficientNet B3 model output
      */
     processModelOutput(modelResult) {
-        // Expected format: { predictions: [[prob1, prob2, ...]], class: 0 }
-        const predictions = modelResult.predictions[0] || [];
-        const predictedClass = modelResult.class || 0;
+        let predictions = [];
+
+        // Check if it's the 15-class dictionary from FastAPI
+        if (modelResult && typeof modelResult === 'object' && !modelResult.predictions) {
+            const p = modelResult;
+            
+            // Map the 15 LADI classes to the 8 backend categories
+            const mapped = {
+                'fire': (p.trees_damage > 0.6 && p.flooding_any < 0.2) ? p.trees_damage * 0.5 : 0.0,
+                'flood': Math.max(p.flooding_any || 0, p.flooding_structures || 0, p.water_any || 0),
+                'earthquake_damage': Math.max(p.buildings_affected || 0, p.buildings_destroyed || 0, p.bridges_damage || 0, p.roads_damage || 0),
+                'landslide': Math.max(p.debris_any || 0, p.roads_damage || 0),
+                'storm_damage': Math.max(p.trees_damage || 0, p.buildings_minor || 0, p.buildings_major || 0),
+                'building_collapse': p.buildings_destroyed || 0,
+                'infrastructure_damage': Math.max(p.roads_damage || 0, p.bridges_damage || 0, p.flooding_structures || 0, p.debris_any || 0),
+            };
+
+            const maxDamage = Math.max(
+                mapped.flood,
+                mapped.earthquake_damage,
+                mapped.landslide,
+                mapped.storm_damage,
+                mapped.building_collapse,
+                mapped.infrastructure_damage
+            );
+            mapped['normal'] = Math.max(0, 1.0 - maxDamage);
+
+            const labelOrder = ['fire', 'flood', 'earthquake_damage', 'landslide', 'storm_damage', 'building_collapse', 'infrastructure_damage', 'normal'];
+            predictions = labelOrder.map(label => mapped[label]);
+        } else if (modelResult && modelResult.predictions) {
+            // Backward compatibility for raw arrays
+            predictions = modelResult.predictions[0] || [];
+        }
 
         // Get top 3 predictions
         const sortedPredictions = predictions
@@ -217,6 +247,7 @@ class ImageDisasterDetectionAgent {
             severity: this.calculateSeverityFromProbability(sortedPredictions[0].probability)
         };
     }
+
 
     /**
      * Simulate EfficientNet B3 predictions (for demo/testing)

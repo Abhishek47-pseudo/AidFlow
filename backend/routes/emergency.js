@@ -100,7 +100,14 @@ router.post('/request', async (req, res) => {
                 confidence: decisionResult.confidence,
                 dispatchExecuted: decisionResult.dispatchExecuted || false,
                 reasoning: decisionResult.reasoning,
-                dispatchPlan: decisionResult.dispatchPlan
+                dispatchPlan: decisionResult.dispatchPlan,
+                sentiment: decisionResult.sentiment,
+                emotion: decisionResult.emotion,
+                urgency_score: decisionResult.urgency_score,
+                entities: decisionResult.entities,
+                risk_level: decisionResult.risk_level,
+                requires_immediate_dispatch: decisionResult.requires_immediate_dispatch,
+                alternativeActions: decisionResult.alternativeActions
             },
             message: decisionResult.dispatchExecuted
                 ? '🚀 Emergency analyzed and resources automatically dispatched by AI!'
@@ -782,7 +789,14 @@ router.post('/public-request', async (req, res) => {
                 confidence: decisionResult.confidence,
                 dispatchExecuted: decisionResult.dispatchExecuted || false,
                 reasoning: decisionResult.reasoning,
-                dispatchPlan: decisionResult.dispatchPlan
+                dispatchPlan: decisionResult.dispatchPlan,
+                sentiment: decisionResult.sentiment,
+                emotion: decisionResult.emotion,
+                urgency_score: decisionResult.urgency_score,
+                entities: decisionResult.entities,
+                risk_level: decisionResult.risk_level,
+                requires_immediate_dispatch: decisionResult.requires_immediate_dispatch,
+                alternativeActions: decisionResult.alternativeActions
             },
             message: decisionResult.dispatchExecuted
                 ? '🚀 Emergency analyzed and resources automatically dispatched by AI!'

@@ -43,7 +43,7 @@ const clearCollection = async (Model, collectionName) => {
 // **********************************************
 async function seedUsersData() {
   try {
-    console.log("👤 Seeding users (Admin, Branch Manager, Volunteer, Affected Citizen)...");
+    console.log("👤 Seeding users (Admin, Branch Manager, Volunteer, Refugee)...");
     
     // Clear existing users
     await clearCollection(User, 'users');
@@ -174,8 +174,8 @@ async function seedRequestsData() {
       const requestData = readJsonFile('requests_seed.json');
       
       if (requestData.length > 0) {
-        // Get affected citizen user ID
-        const citizenUser = await User.findOne({ role: 'affected citizen' });
+        // Get refugee user ID
+        const citizenUser = await User.findOne({ role: 'refugee' });
         if (citizenUser) {
           const updatedRequestData = requestData.map(request => ({
             ...request,
@@ -187,7 +187,7 @@ async function seedRequestsData() {
           await Request.insertMany(updatedRequestData);
           console.log(`✅ Created ${updatedRequestData.length} requests`);
         } else {
-          console.warn("⚠️  No affected citizen user found, skipping requests");
+          console.warn("⚠️  No refugee user found, skipping requests");
         }
       }
     } else {
@@ -209,8 +209,8 @@ async function seedEmergencyData() {
       const emergencyData = readJsonFile('emergency_requests_seed.json');
       
       if (emergencyData.length > 0) {
-        // Get affected citizen user ID
-        const citizenUser = await User.findOne({ role: 'affected citizen' });
+        // Get refugee user ID
+        const citizenUser = await User.findOne({ role: 'refugee' });
         if (citizenUser) {
           const updatedEmergencyData = emergencyData.map(emergency => ({
             ...emergency,
@@ -224,7 +224,7 @@ async function seedEmergencyData() {
           await Emergency.insertMany(updatedEmergencyData);
           console.log(`✅ Created ${updatedEmergencyData.length} emergency requests`);
         } else {
-          console.warn("⚠️  No affected citizen user found, skipping emergencies");
+          console.warn("⚠️  No refugee user found, skipping emergencies");
         }
       }
     } else {
@@ -258,7 +258,7 @@ async function seedDatabase() {
     console.log("   - Admin: Full system access");
     console.log("   - Branch Manager: Regional operations");
     console.log("   - Volunteer: Donation management");
-    console.log("   - Affected Citizen: Request assistance");
+    console.log("   - Refugee: Request assistance");
   } catch (err) {
     console.error("❌ Database seeding failed:", err.message);
   } finally {

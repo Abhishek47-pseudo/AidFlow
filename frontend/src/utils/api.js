@@ -77,6 +77,8 @@ export const createAuthenticatedAxios = (token) => {
       if (error.response?.status === 401) {
         // Token expired or invalid
         console.error('Authentication failed. Please log in again.');
+        localStorage.removeItem('userToken');
+        window.location.reload();
       }
       return Promise.reject(error);
     }

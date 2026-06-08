@@ -68,6 +68,7 @@ agents/.env
 
 # --- Large Files & Model Weights ---
 *.pth
+ml_server/best_effnet_b3_multilabel.pth
 *.h5
 *.weights
 *.onnx
